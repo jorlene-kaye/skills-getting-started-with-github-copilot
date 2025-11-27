@@ -13,6 +13,21 @@ document.addEventListener("DOMContentLoaded", () => {
       // Clear loading message
       activitiesList.innerHTML = "";
 
+      // Keep only the default option in the select (avoid duplicates)
+      while (activitySelect && activitySelect.options && activitySelect.options.length > 1) {
+        activitySelect.remove(1);
+      }
+
+      // helper to escape text for safe insertion
+      function escapeHtml(unsafe) {
+        return unsafe
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/\'/g, "&#039;");
+      }
+
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
@@ -20,11 +35,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Build participants area (bulleted list). If there are no participants, show a muted message.
+        let participantsHtml = "";
+        const participants = Array.isArray(details.participants) ? details.participants : [];
+        if (participants.length === 0) {
+          participantsHtml = `
+            <div class="participants no-participants">
+              <strong>Participants:</strong>
+              <p class="none">No participants yet</p>
+            </div>
+          `;
+        } else {
+          const items = participants
+            .map((p) => `<li>${escapeHtml(String(p))}</li>`)
+            .join("");
+
+          participantsHtml = `
+            <div class="participants">
+              <strong>Participants (${participants.length}):</strong>
+              <ul class="participants-list">${items}</ul>
+            </div>
+          `;
+        }
+
         activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
+          <h4>${escapeHtml(name)}</h4>
+          <p>${escapeHtml(details.description)}</p>
+          <p><strong>Schedule:</strong> ${escapeHtml(details.schedule)}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHtml}
         `;
 
         activitiesList.appendChild(activityCard);
@@ -60,11 +99,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (response.ok) {
         messageDiv.textContent = result.message;
-        messageDiv.className = "success";
+        messageDiv.className = "message success";
         signupForm.reset();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        messageDiv.className = "message error";
       }
 
       messageDiv.classList.remove("hidden");
@@ -75,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 5000);
     } catch (error) {
       messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
+      messageDiv.className = "message error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
     }
